@@ -33,9 +33,11 @@ import { ROADMAP_PHASES } from '@/data/roadmapData';
 import { VerificationTelemetry } from '@/types';
 import { soundEffects } from '@/utils/soundEffects';
 import { useLanguage } from '@/context/LanguageContext';
+import { useGame } from '@/context/GameContext';
 
 export default function HomePage() {
   const { language, toggleLanguage } = useLanguage();
+  const { addXP, addCoins } = useGame();
   const isBn = language === 'bn';
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
   // Strict Zero-Trust State: ALWAYS false on initial load and every page refresh
@@ -71,12 +73,19 @@ export default function HomePage() {
   // Save completed lessons to localStorage
   const handleToggleComplete = (lessonId: string) => {
     setCompletedLessons((prev) => {
-      const next = prev.includes(lessonId)
-        ? prev.filter((id) => id !== lessonId)
-        : [...prev, lessonId];
+      const isFinishing = !prev.includes(lessonId);
+      const next = isFinishing
+        ? [...prev, lessonId]
+        : prev.filter((id) => id !== lessonId);
       try {
         localStorage.setItem('nextgen_completed_lessons', JSON.stringify(next));
       } catch {}
+
+      if (isFinishing) {
+        addXP(50, isBn ? 'ওয়েব রোডম্যাপ লেসন সম্পন্ন' : 'Completed Web Dev Lesson');
+        addCoins(15);
+      }
+
       return next;
     });
   };

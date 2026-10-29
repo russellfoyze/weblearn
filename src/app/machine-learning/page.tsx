@@ -13,6 +13,9 @@ import {
   BookOpen,
   HelpCircle,
   TrendingUp,
+  Gamepad2,
+  Flame,
+  Award,
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -20,10 +23,12 @@ import MlOverviewHero from '@/components/ml/MlOverviewHero';
 import MlAlgorithmCard from '@/components/ml/MlAlgorithmCard';
 import { ML_ALGORITHMS, MLAlgorithmData } from '@/data/mlAlgorithmsData';
 import { useLanguage } from '@/context/LanguageContext';
+import { useGame } from '@/context/GameContext';
 import { soundEffects } from '@/utils/soundEffects';
 
 export default function MachineLearningPage() {
   const { language } = useLanguage();
+  const { openGame } = useGame();
   const isBn = language === 'bn';
 
   // Filter & Search state
@@ -91,6 +96,58 @@ export default function MachineLearningPage() {
         {/* MODULE 1: THE 7-ALGORITHM OVERVIEW HERO (PAGE 1 INFOGRAPHIC) */}
         {/* ======================================================== */}
         <MlOverviewHero />
+
+        {/* ======================================================== */}
+        {/* GAMIFIED ARCADE STATION BANNER (PLAY & LEARN) */}
+        {/* ======================================================== */}
+        <section className="relative p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-rose-950/40 border-2 border-cyan-500/40 shadow-2xl overflow-hidden space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold">
+                <Gamepad2 className="w-3.5 h-3.5 animate-pulse" />
+                <span>{isBn ? 'গেম খেলে শিখুন • ML আর্কেড মোড' : 'PLAY & LEARN • ML ARCADE MODE'}</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-white">
+                {isBn
+                  ? 'থিওরি নয়, গেম খেলেই হয়ে উঠুন এআই মাস্টার!'
+                  : 'Level Up Your Skills Through Playable Mini-Games!'}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                {isBn
+                  ? 'প্রতিটি অ্যালগরিদমের জন্য তৈরি করা হয়েছে আকর্ষণীয় গেম। লেজার দিয়ে রিগ্রেশন লাইন নিশানা করুন, সিগময়েড দিয়ে স্প্যাম ধ্বংস করুন, আর ডিসিশন ট্রি দিয়ে মেজ জয় করুন!'
+                  : 'Test your intuition in interactive arcade challenges. Slice targets with Linear Lasers, vaporize spam with the Sigmoid Cannon, and battle dungeon bosses with Decision Trees!'}
+              </p>
+            </div>
+
+            {/* Launch Arcade Master Button */}
+            <button
+              onClick={() => openGame('linear-regression')}
+              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 via-purple-500 to-rose-500 hover:from-cyan-300 hover:to-rose-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl shadow-cyan-950/60 hover:scale-105 active:scale-95 transition flex items-center gap-2"
+            >
+              <Gamepad2 className="w-4 h-4 text-slate-950 animate-bounce" />
+              <span>{isBn ? '🎮 আর্কেড এরিনায় প্রবেশ করুন' : '🎮 ENTER ARCADE ARENA'}</span>
+            </button>
+          </div>
+
+          {/* Quick Mini-Game Launcher Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
+            {[
+              { id: 'linear-regression', title: isBn ? '🎯 লিনিয়ার স্নাইপার' : '🎯 Linear Sniper', desc: isBn ? 'MSE নিশানা করুন' : 'Align Laser Beam', color: 'border-rose-500/40 bg-rose-500/10' },
+              { id: 'logistic-regression', title: isBn ? '🛡️ স্প্যাম ডিফেন্ডার' : '🛡️ Spam Defender', desc: isBn ? 'সিগময়েড টারেট' : 'Sigmoid Cannon', color: 'border-sky-500/40 bg-sky-500/10' },
+              { id: 'decision-tree', title: isBn ? '🌳 ডিসিশন মেজ' : '🌳 Decision Dungeon', desc: isBn ? 'শর্ত মেনে দানব বধ' : 'Gini Split RPG', color: 'border-emerald-500/40 bg-emerald-500/10' },
+              { id: 'k-nearest-neighbors', title: isBn ? '📡 কেএনএন রাডার' : '📡 KNN Radar', desc: isBn ? 'দূরত্ব মেপে রহস্য ভেদ' : 'Proximity Scanner', color: 'border-violet-500/40 bg-violet-500/10' },
+            ].map((game) => (
+              <button
+                key={game.id}
+                onClick={() => openGame(game.id)}
+                className={`p-3 rounded-2xl border text-left transition hover:scale-[1.03] active:scale-95 ${game.color}`}
+              >
+                <div className="text-xs font-bold text-white">{game.title}</div>
+                <div className="text-[10px] text-slate-400 font-mono mt-0.5">{game.desc}</div>
+              </button>
+            ))}
+          </div>
+        </section>
 
         {/* ======================================================== */}
         {/* FILTER & SEARCH CONTROLS */}

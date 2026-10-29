@@ -22,9 +22,14 @@ import {
   Cpu,
   Globe,
   Layers,
+  Gamepad2,
 } from 'lucide-react';
 import { soundEffects } from '@/utils/soundEffects';
 import { useLanguage } from '@/context/LanguageContext';
+import { useGame } from '@/context/GameContext';
+import PlayerHudBar from '@/components/game/PlayerHudBar';
+import GameArenaModal from '@/components/game/GameArenaModal';
+import QuestModal from '@/components/game/QuestModal';
 
 interface NavbarProps {
   progressPercent?: number;
@@ -57,6 +62,7 @@ export default function Navbar({
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, toggleLanguage } = useLanguage();
+  const { openGame } = useGame();
   const pathname = usePathname();
   const isBn = language === 'bn';
 
@@ -102,7 +108,8 @@ export default function Navbar({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80">
+    <>
+      <header className="sticky top-0 z-40 w-full bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80">
       {/* Top Mastery Progress Micro-Bar */}
       {!isMlTrack && totalLessonsCount > 0 && (
         <div className="w-full h-1 bg-slate-900 overflow-hidden">
@@ -224,6 +231,16 @@ export default function Navbar({
 
         {/* Right Action Cluster: Language Toggle + Audio + Security */}
         <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Game Mode Launcher Button */}
+          <button
+            onClick={() => openGame('linear-regression')}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 via-rose-500 to-cyan-500 text-slate-950 font-black text-xs shadow-md shadow-amber-950/40 hover:scale-105 active:scale-95 transition"
+            title={isBn ? 'এমএল আর্কেড গেম খেলুন' : 'Play ML Arcade Games'}
+          >
+            <Gamepad2 className="w-3.5 h-3.5 text-slate-950 animate-bounce" />
+            <span className="hidden sm:inline">{isBn ? 'গেম খেলুন' : 'Game Mode'}</span>
+          </button>
+
           {/* ======================================================== */}
           {/* BANGLA & ENGLISH TOGGLE BUTTON (Prominent in Top Header) */}
           {/* ======================================================== */}
@@ -391,5 +408,13 @@ export default function Navbar({
         )}
       </AnimatePresence>
     </header>
+
+    {/* Gamification Player HUD Bar */}
+    <PlayerHudBar />
+
+    {/* Interactive Game Modals */}
+    <GameArenaModal />
+    <QuestModal />
+    </>
   );
 }

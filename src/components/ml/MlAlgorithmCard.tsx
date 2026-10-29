@@ -12,9 +12,11 @@ import {
   BookOpen,
   Table as TableIcon,
   Lightbulb,
+  Gamepad2,
 } from 'lucide-react';
 import { MLAlgorithmData } from '@/data/mlAlgorithmsData';
 import { useLanguage } from '@/context/LanguageContext';
+import { useGame } from '@/context/GameContext';
 
 // Import the 7 interactive components
 import LinearRegressionInteractive from './LinearRegressionInteractive';
@@ -31,6 +33,7 @@ interface MlAlgorithmCardProps {
 
 export default function MlAlgorithmCard({ algorithm }: MlAlgorithmCardProps) {
   const { language } = useLanguage();
+  const { openGame } = useGame();
   const isBn = language === 'bn';
 
   // Render the appropriate interactive simulator for this algorithm
@@ -95,8 +98,17 @@ export default function MlAlgorithmCard({ algorithm }: MlAlgorithmCardProps) {
             </div>
           </div>
 
-          {/* Type Badges */}
-          <div className="flex items-center gap-2">
+          {/* Type Badges & Game Launcher */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => openGame(algorithm.slug)}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 via-rose-400 to-pink-500 hover:from-amber-300 hover:to-pink-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-rose-950/40 hover:scale-105 active:scale-95 transition"
+            >
+              <Gamepad2 className="w-3.5 h-3.5 animate-bounce" />
+              <span>{isBn ? '🎮 গেম খেলুন' : '🎮 Play Mini-Game'}</span>
+            </button>
+
             <span
               className="px-3 py-1 rounded-full text-xs font-mono font-bold border"
               style={{

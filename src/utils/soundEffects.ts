@@ -1,5 +1,5 @@
 /**
- * Web Audio API Sound Synthesizer for Interactive Feedback
+ * Web Audio API Sound Synthesizer for Interactive Feedback & Game Audio
  * Zero external audio assets required. Safe in SSR/Next.js.
  */
 
@@ -10,7 +10,9 @@ class SoundFX {
   private init() {
     if (typeof window === 'undefined') return;
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
@@ -48,9 +50,7 @@ class SoundFX {
         osc.start(now + idx * 0.08);
         osc.stop(now + idx * 0.08 + 0.38);
       });
-    } catch {
-      // Audio context error recovery
-    }
+    } catch {}
   }
 
   public playFail() {
@@ -75,9 +75,7 @@ class SoundFX {
 
       osc.start(now);
       osc.stop(now + 0.35);
-    } catch {
-      // Audio context error recovery
-    }
+    } catch {}
   }
 
   public playGreenAlert() {
@@ -102,9 +100,7 @@ class SoundFX {
 
       osc.start(now);
       osc.stop(now + 0.16);
-    } catch {
-      // Audio context error recovery
-    }
+    } catch {}
   }
 
   public playMagneticHum() {
@@ -130,9 +126,7 @@ class SoundFX {
 
       osc.start(now);
       osc.stop(now + 0.3);
-    } catch {
-      // Audio context error recovery
-    }
+    } catch {}
   }
 
   public playClick() {
@@ -156,9 +150,7 @@ class SoundFX {
 
       osc.start(now);
       osc.stop(now + 0.05);
-    } catch {
-      // Audio context error recovery
-    }
+    } catch {}
   }
 
   public playComplete() {
@@ -186,9 +178,110 @@ class SoundFX {
         osc.start(now + idx * 0.06);
         osc.stop(now + idx * 0.06 + 0.5);
       });
-    } catch {
-      // Audio context error recovery
-    }
+    } catch {}
+  }
+
+  public playCoin() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(987.77, now);
+      osc.frequency.setValueAtTime(1318.51, now + 0.08);
+
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } catch {}
+  }
+
+  public playLevelUp() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const fanfare = [392, 523.25, 659.25, 783.99, 1046.5]; // G4, C5, E5, G5, C6
+      fanfare.forEach((freq, idx) => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+        gain.gain.setValueAtTime(0.2, now + idx * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now + idx * 0.09);
+        osc.stop(now + idx * 0.09 + 0.4);
+      });
+    } catch {}
+  }
+
+  public playLaser() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.15);
+
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } catch {}
+  }
+
+  public playCombo() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(587.33, now);
+      osc.frequency.setValueAtTime(880, now + 0.06);
+
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } catch {}
   }
 }
 

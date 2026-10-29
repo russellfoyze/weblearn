@@ -1,0 +1,43 @@
+import type { Metadata, Viewport } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'NextGen Full-Stack Mastery: Zero to Expert',
+  description:
+    'An interactive, animated learning platform taking developers from basic HTML to deploying secure, production-grade Next.js applications on Vercel.',
+  keywords: [
+    'Next.js',
+    'React',
+    'Full-Stack',
+    'Tailwind CSS',
+    'Framer Motion',
+    'TypeScript',
+    'Vercel Deployment',
+    'Web Development Roadmap',
+  ],
+  authors: [{ name: 'NextGen Mastery Team' }],
+  icons: {
+    icon: '/favicon.ico',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0B0F19',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" className="dark scroll-smooth">
+      <body className="min-h-screen bg-[#0B0F19] text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+        {children}
+      </body>
+    </html>
+  );
+}

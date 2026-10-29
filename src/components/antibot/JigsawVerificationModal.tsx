@@ -16,25 +16,33 @@ import {
   Sparkles,
   Info,
   ChevronRight,
-  Eye,
   Sliders,
   CheckCircle2,
   XCircle,
+  Clock,
+  EyeOff,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { soundEffects } from '@/utils/soundEffects';
-import { generateVerificationToken, VerificationTokenPayload } from '@/utils/antiBotCrypto';
+import {
+  generateVerificationToken,
+  detectAutomatedBotEnvironment,
+} from '@/utils/antiBotCrypto';
 import { VerificationTelemetry } from '@/types';
 
 interface JigsawVerificationModalProps {
   isOpen: boolean;
   onVerified: (telemetry: VerificationTelemetry, token: string) => void;
-  onBypass?: () => void;
-  isDismissable?: boolean;
 }
 
 // Helper to draw an interlocking jigsaw piece on HTML5 Canvas
-function drawJigsawPath(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, tabSize: number = 10) {
+function drawJigsawPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  tabSize: number = 10
+) {
   const s = size;
   const t = tabSize;
   ctx.beginPath();
@@ -62,23 +70,32 @@ function drawJigsawPath(ctx: CanvasRenderingContext2D, x: number, y: number, siz
 export default function JigsawVerificationModal({
   isOpen,
   onVerified,
-  onBypass,
-  isDismissable = false,
 }: JigsawVerificationModalProps) {
-  const [phase, setPhase] = useState<'IDLE' | 'DRAGGING' | 'HOLDING_SLOT' | 'READY_RELEASE' | 'VERIFIED' | 'FAILED'>('IDLE');
+  const [phase, setPhase] = useState<
+    'IDLE' | 'DRAGGING' | 'HOLDING_SLOT' | 'READY_RELEASE' | 'VERIFIED' | 'FAILED'
+  >('IDLE');
   const [failReason, setFailReason] = useState<string>('');
   const [holdProgress, setHoldProgress] = useState<number>(0);
   const [telemetry, setTelemetry] = useState<VerificationTelemetry | null>(null);
   const [botSimulating, setBotSimulating] = useState<boolean>(false);
   const [showResearchInfo, setShowResearchInfo] = useState<boolean>(false);
 
+  // Security brute force rate limiting state
+  const [failCount, setFailCount] = useState<number>(0);
+  const [lockoutSeconds, setLockoutSeconds] = useState<number>(0);
+  const [envBotDetected, setEnvBotDetected] = useState<boolean>(false);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const handleRef = useRef<HTMLDivElement | null>(null);
   const progressFillRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
 
-  const phaseRef = useRef<'IDLE' | 'DRAGGING' | 'HOLDING_SLOT' | 'READY_RELEASE' | 'VERIFIED' | 'FAILED'>('IDLE');
-  const setPhaseSync = (next: 'IDLE' | 'DRAGGING' | 'HOLDING_SLOT' | 'READY_RELEASE' | 'VERIFIED' | 'FAILED') => {
+  const phaseRef = useRef<
+    'IDLE' | 'DRAGGING' | 'HOLDING_SLOT' | 'READY_RELEASE' | 'VERIFIED' | 'FAILED'
+  >('IDLE');
+  const setPhaseSync = (
+    next: 'IDLE' | 'DRAGGING' | 'HOLDING_SLOT' | 'READY_RELEASE' | 'VERIFIED' | 'FAILED'
+  ) => {
     phaseRef.current = next;
     setPhase(next);
   };
@@ -90,16 +107,44 @@ export default function JigsawVerificationModal({
     currentX: 18,
     rawSliderX: 18,
     dragStartX: 0,
-    cdGainShiftX: 110, // Control-Display gain threshold (1.0 -> 0.88)
+    cdGainShiftX: 110, // Non-linear Control-Display gain threshold (1.0 -> 0.88)
     slotEnterTime: 0,
     releaseCueTime: 0,
     magneticDriftX: 0,
     perturbations: [] as { vx: number; t: number }[],
     pointerLog: [] as { x: number; y: number; sliderX: number; t: number }[],
     isBotSim: false,
+    challengeSessionId: '',
   });
 
+  // Check browser automation flags on mount
+  useEffect(() => {
+    const botCheck = detectAutomatedBotEnvironment();
+    if (botCheck.isBot) {
+      setEnvBotDetected(true);
+      setFailReason(`[AUTOMATION ENVIRONMENT DETECTED] ${botCheck.reason}. Access strictly forbidden.`);
+      setPhaseSync('FAILED');
+    }
+  }, []);
+
+  // Cooldown timer loop
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutSeconds]);
+
   const initChallenge = useCallback(() => {
+    if (lockoutSeconds > 0) return;
+
     const p = puzzleRef.current;
     p.targetX = Math.floor(185 + Math.random() * 85); // 185 to 270 px
     p.targetY = Math.floor(45 + Math.random() * 35);
@@ -109,6 +154,8 @@ export default function JigsawVerificationModal({
     p.perturbations = [];
     p.pointerLog = [];
     p.isBotSim = false;
+    p.challengeSessionId = 'ch_' + Math.random().toString(36).substring(2, 11);
+
     setHoldProgress(0);
     setFailReason('');
     setTelemetry(null);
@@ -121,13 +168,28 @@ export default function JigsawVerificationModal({
     if (progressFillRef.current) {
       progressFillRef.current.style.width = '36px';
     }
-  }, []);
+  }, [lockoutSeconds]);
 
   useEffect(() => {
     if (isOpen) {
       initChallenge();
     }
   }, [isOpen, initChallenge]);
+
+  // Handle failure and increment brute-force counter
+  const registerFailure = useCallback((reason: string) => {
+    setFailReason(reason);
+    soundEffects.playFail();
+    setPhaseSync('FAILED');
+    setFailCount((prev) => {
+      const next = prev + 1;
+      if (next >= 3) {
+        setLockoutSeconds(12); // Enforce 12-second backoff penalty
+        return 0;
+      }
+      return next;
+    });
+  }, []);
 
   // 60 FPS Canvas rendering loop
   useEffect(() => {
@@ -187,7 +249,7 @@ export default function JigsawVerificationModal({
         setHoldProgress(prog);
 
         // Sinusoidal wind force perturbation: v_wind(t) = 0.35 sin(0.014 t) + 0.25 cos(0.023 t)
-        const windVx = Math.sin(now * 0.014) * 0.35 + Math.cos(now * 0.023) * 0.25;
+        const windVx = Math.sin(now * 0.014) * 0.38 + Math.cos(now * 0.023) * 0.26;
         p.magneticDriftX += windVx;
         p.perturbations.push({ vx: windVx, t: now });
 
@@ -216,9 +278,9 @@ export default function JigsawVerificationModal({
 
       // 3. Timeout check in READY_RELEASE (>680ms)
       if (mode === 'READY_RELEASE' && now - p.releaseCueTime > 680) {
-        setFailReason('Receptor Timeout (>680ms)! Release reflex exceeded maximum biological threshold. Release immediately when green.');
-        soundEffects.playFail();
-        setPhaseSync('FAILED');
+        registerFailure(
+          'Receptor Timeout (>680ms)! Release reflex exceeded maximum biological threshold. Release immediately when green.'
+        );
       }
 
       // 4. Draw Cutout Target Slot (Depressed Silhouette)
@@ -302,11 +364,24 @@ export default function JigsawVerificationModal({
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [isOpen, holdProgress]);
+  }, [isOpen, holdProgress, registerFailure]);
 
-  // Pointer interactions
+  // Pointer interactions with strict DOM trust verification
   const handleSliderDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // 1. Invariant: Untrusted DOM event check (anti-Puppeteer / anti-dispatchEvent)
+    if (!e.isTrusted) {
+      registerFailure('Synthetic Event Intercepted: Automated script dispatched untrusted pointer event.');
+      return;
+    }
+
+    if (envBotDetected) {
+      registerFailure('Access Denied: Automated environment active.');
+      return;
+    }
+
+    if (lockoutSeconds > 0) return;
     if (phase === 'VERIFIED' || botSimulating) return;
+
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = puzzleRef.current;
     p.dragStartX = e.clientX - p.rawSliderX;
@@ -319,6 +394,11 @@ export default function JigsawVerificationModal({
   };
 
   const handleSliderMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.isTrusted) {
+      registerFailure('Synthetic Event Intercepted: Untrusted pointer movement detected.');
+      return;
+    }
+
     const mode = phaseRef.current;
     if (mode !== 'DRAGGING' && mode !== 'HOLDING_SLOT' && mode !== 'READY_RELEASE') return;
 
@@ -336,7 +416,7 @@ export default function JigsawVerificationModal({
       progressFillRef.current.style.width = `${rawX + 18}px`;
     }
 
-    // Stage 1 Non-Linear C/D Gain Shift (above 110px, gain shifts by 0.88)
+    // Stage 1 Non-Linear C/D Gain Shift (above 110px, gain shifts by 0.88x)
     let mappedX = rawX;
     if (rawX > p.cdGainShiftX) {
       mappedX = p.cdGainShiftX + (rawX - p.cdGainShiftX) * 0.88;
@@ -354,7 +434,12 @@ export default function JigsawVerificationModal({
     }
   };
 
-  const handleSliderUp = () => {
+  const handleSliderUp = (e?: React.PointerEvent<HTMLDivElement>) => {
+    if (e && !e.isTrusted) {
+      registerFailure('Synthetic Event Intercepted: Untrusted release event detected.');
+      return;
+    }
+
     const now = performance.now();
     const mode = phaseRef.current;
     const p = puzzleRef.current;
@@ -365,20 +450,18 @@ export default function JigsawVerificationModal({
 
     // Case 1: Released while dragging (did not hold)
     if (mode === 'DRAGGING') {
-      const reason = `Jigsaw piece not locked! Stopped ${Math.round(finalDist)}px away from cutout. Slide piece directly into slot and hold for magnetic capture.`;
-      setFailReason(reason);
-      soundEffects.playFail();
-      setPhaseSync('FAILED');
+      registerFailure(
+        `Jigsaw piece not locked! Stopped ${Math.round(finalDist)}px away from cutout. Slide piece directly into slot and hold for magnetic capture.`
+      );
       return;
     }
 
     // Case 2: Released prematurely during hold
     if (mode === 'HOLDING_SLOT') {
       const earlyMs = Math.round(p.releaseCueTime - now);
-      const reason = `Premature Release: Released ${earlyMs}ms too early! Hold steady until slot flashes EMERALD GREEN.`;
-      setFailReason(reason);
-      soundEffects.playFail();
-      setPhaseSync('FAILED');
+      registerFailure(
+        `Premature Release: Released ${earlyMs}ms too early! Hold steady until slot flashes EMERALD GREEN.`
+      );
       return;
     }
 
@@ -388,10 +471,9 @@ export default function JigsawVerificationModal({
 
       // Invariant: Optic-motor latency floor (<115ms = DOM automation script)
       if (reactionMs < 115) {
-        const reason = `Superhuman Bot Detected: ${reactionMs}ms reaction time is below human optic-motor latency floor (115ms).`;
-        setFailReason(reason);
-        soundEffects.playFail();
-        setPhaseSync('FAILED');
+        registerFailure(
+          `Superhuman Bot Detected: ${reactionMs}ms reaction time is below human optic-motor latency floor (115ms).`
+        );
         return;
       }
 
@@ -436,17 +518,19 @@ export default function JigsawVerificationModal({
         reactionMs,
         wristCoupling,
         submovementRateHz: submovementRate,
+        sessionId: p.challengeSessionId,
       });
 
       finalTelemetry.token = token;
       setTelemetry(finalTelemetry);
       setPhaseSync('VERIFIED');
+      setFailCount(0);
       soundEffects.playSuccess(3);
 
       try {
         confetti({
-          particleCount: 80,
-          spread: 70,
+          particleCount: 90,
+          spread: 80,
           origin: { y: 0.6 },
           colors: ['#06b6d4', '#a855f7', '#10b981'],
         });
@@ -454,12 +538,13 @@ export default function JigsawVerificationModal({
 
       setTimeout(() => {
         onVerified(finalTelemetry, token);
-      }, 1400);
+      }, 1200);
     }
   };
 
-  // Bot Simulator: Demonstrates why OpenCV / WindMouse automation fails
+  // Bot Simulator: Demonstrates why OpenCV / WindMouse automation fails against non-linear gain
   const simulateBotAttack = () => {
+    if (lockoutSeconds > 0) return;
     initChallenge();
     setBotSimulating(true);
     const p = puzzleRef.current;
@@ -495,56 +580,45 @@ export default function JigsawVerificationModal({
         setBotSimulating(false);
         // Bot reaches its calculated endpoint and releases immediately!
         const finalDist = Math.abs(p.currentX - p.targetX);
-        const reason = `[BOT ATTACK BLOCKED] OpenCV / WindMouse script detected! Bot calculated distance linearly but undershot slot by ${Math.round(finalDist)}px due to Non-Linear C/D Gain (0.88x) & failed magnetic hold.`;
-        setFailReason(reason);
-        soundEffects.playFail();
-        setPhaseSync('FAILED');
+        const reason = `[BOT ATTACK BLOCKED] OpenCV / WindMouse script detected! Bot calculated distance linearly but undershot slot by ${Math.round(
+          finalDist
+        )}px due to Non-Linear C/D Gain (0.88x) & failed closed-loop magnetic hold. Access denied.`;
+        registerFailure(reason);
       }
     }, 25);
-  };
-
-  const handleInstantBypass = () => {
-    const dummyTelemetry: VerificationTelemetry = {
-      reactionMs: 240,
-      slotErrorPx: 0.5,
-      ballisticPeaks: 4,
-      wristCoupling: 0.082,
-      submovementRateHz: 4.8,
-      holdDurationMs: 1050,
-      sampleCount: 65,
-      verified: true,
-      isBot: false,
-      mlScore: 99,
-    };
-    const token = generateVerificationToken(dummyTelemetry);
-    dummyTelemetry.token = token;
-    soundEffects.playSuccess(1);
-    setPhaseSync('VERIFIED');
-    setTimeout(() => {
-      onVerified(dummyTelemetry, token);
-      if (onBypass) onBypass();
-    }, 400);
   };
 
   if (!isOpen) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xl overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-2xl overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.94, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.25 }}
-          className="relative w-full max-w-xl bg-slate-900/95 border border-slate-700/80 rounded-2xl shadow-2xl shadow-cyan-950/40 p-4 sm:p-6 text-slate-100 overflow-hidden"
+          className="relative w-full max-w-xl bg-slate-900/95 border border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-950/50 p-4 sm:p-6 text-slate-100 overflow-hidden"
         >
           {/* Neon Top Accent Line */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-emerald-500" />
 
+          {/* Mandatory Security Banner */}
+          <div className="flex items-center justify-between mb-3 px-3 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-500/20 text-[11px] font-mono text-cyan-300">
+            <span className="flex items-center gap-1.5 font-bold">
+              <Lock className="w-3.5 h-3.5 text-cyan-400" />
+              MANDATORY ACCESS GATE • DEFENSIVE V4
+            </span>
+            <span className="text-emerald-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              AI SCRAPER SHIELD ACTIVE
+            </span>
+          </div>
+
           {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
@@ -553,7 +627,7 @@ export default function JigsawVerificationModal({
                     AntiGravity Jigsaw Sensorimotor Gate
                   </h3>
                   <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-                    Defensive v3
+                    Defensive v4
                   </span>
                 </div>
                 <p className="text-xs text-slate-400">
@@ -563,8 +637,9 @@ export default function JigsawVerificationModal({
             </div>
 
             <button
+              type="button"
               onClick={() => setShowResearchInfo(!showResearchInfo)}
-              className="text-slate-400 hover:text-cyan-400 p-1.5 rounded-lg hover:bg-slate-800 transition"
+              className="text-slate-400 hover:text-cyan-400 p-1.5 rounded-lg hover:bg-slate-800 transition shrink-0"
               title="Toggle Security Mechanics"
             >
               <Info className="w-4 h-4" />
@@ -582,17 +657,23 @@ export default function JigsawVerificationModal({
               >
                 <div className="font-semibold text-cyan-400 flex items-center gap-1.5">
                   <Activity className="w-3.5 h-3.5" />
-                  3-Stage Biomechanical Security Pipeline:
+                  Anti-Scraping &amp; Biomechanical Security Pipeline:
                 </div>
-                <ul className="space-y-1 list-disc list-inside text-slate-300">
+                <ul className="space-y-1 list-disc list-inside text-slate-300 text-[11px] leading-relaxed">
                   <li>
-                    <strong className="text-white">Stage 1 (Non-linear C/D Gain):</strong> 0.88x ratio shifts above 110px. Defeats pre-computed OpenCV/WindMouse bots.
+                    <strong className="text-white">DOM Content Gating:</strong> Application HTML is completely withheld from the DOM until the puzzle is solved.
                   </li>
                   <li>
-                    <strong className="text-white">Stage 2 (Magnetic Hold):</strong> Continuous wind force vector requires ~1.0s closed-loop motor stabilization.
+                    <strong className="text-white">Stage 1 (Non-linear C/D Gain):</strong> 0.88x ratio shifts above 110px, defeating OpenCV, Vision LLMs, and pre-computed scripts.
                   </li>
                   <li>
-                    <strong className="text-white">Stage 3 (Emerald Reflex):</strong> Enforces human biological reaction window (115ms ≤ reflex ≤ 680ms).
+                    <strong className="text-white">Stage 2 (Closed-Loop Magnetic Hold):</strong> Continuous wind force vector requires ~1.0s real-time human motor stabilization.
+                  </li>
+                  <li>
+                    <strong className="text-white">Stage 3 (Emerald Reflex):</strong> Enforces human biological reaction latency (115ms ≤ reflex ≤ 680ms).
+                  </li>
+                  <li>
+                    <strong className="text-white">Trusted DOM Events:</strong> Synthetic events dispatched via Puppeteer/Selenium are detected and instantly blocked.
                   </li>
                 </ul>
               </motion.div>
@@ -635,16 +716,24 @@ export default function JigsawVerificationModal({
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-400 flex items-center gap-1">
                 <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-                Slide puzzle piece into slot & hold
+                Slide puzzle piece into slot &amp; hold
               </span>
               <span className="font-mono text-cyan-400 text-[11px]">
-                {phase === 'HOLDING_SLOT' ? `Charging: ${holdProgress}%` : phase === 'READY_RELEASE' ? 'RELEASE NOW!' : 'Drag to slot'}
+                {lockoutSeconds > 0
+                  ? `Lockout: ${lockoutSeconds}s`
+                  : phase === 'HOLDING_SLOT'
+                  ? `Charging: ${holdProgress}%`
+                  : phase === 'READY_RELEASE'
+                  ? 'RELEASE NOW!'
+                  : 'Drag to slot'}
               </span>
             </div>
 
             <div
               ref={trackRef}
-              className="relative h-11 rounded-xl bg-slate-950 border border-slate-800 p-1 flex items-center select-none overflow-hidden"
+              className={`relative h-11 rounded-xl bg-slate-950 border border-slate-800 p-1 flex items-center select-none overflow-hidden ${
+                lockoutSeconds > 0 ? 'opacity-50 pointer-events-none' : ''
+              }`}
             >
               {/* Progress background fill */}
               <div
@@ -689,15 +778,33 @@ export default function JigsawVerificationModal({
 
               {/* Instruction Prompt inside track */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-xs text-slate-400 font-medium">
-                {phase === 'IDLE' && 'Drag slider handle right ➔'}
-                {phase === 'DRAGGING' && 'Align piece inside the cutout'}
-                {phase === 'HOLDING_SLOT' && 'Hold steady inside the slot...'}
-                {phase === 'READY_RELEASE' && '🟢 FLASH GREEN! RELEASE NOW!'}
-                {phase === 'VERIFIED' && 'Verification Complete!'}
-                {phase === 'FAILED' && 'Failure detected — click retry'}
+                {lockoutSeconds > 0 && `Brute-force penalty active — wait ${lockoutSeconds}s`}
+                {lockoutSeconds === 0 && phase === 'IDLE' && 'Drag slider handle right ➔'}
+                {lockoutSeconds === 0 && phase === 'DRAGGING' && 'Align piece inside the cutout'}
+                {lockoutSeconds === 0 && phase === 'HOLDING_SLOT' && 'Hold steady inside the slot...'}
+                {lockoutSeconds === 0 && phase === 'READY_RELEASE' && '🟢 FLASH GREEN! RELEASE NOW!'}
+                {lockoutSeconds === 0 && phase === 'VERIFIED' && 'Verification Complete!'}
+                {lockoutSeconds === 0 && phase === 'FAILED' && 'Failure detected — click Reset to retry'}
               </div>
             </div>
           </div>
+
+          {/* Rate Limit Penalty Banner */}
+          {lockoutSeconds > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 rounded-xl bg-amber-950/60 border border-amber-800/80 text-amber-300 text-xs flex items-center gap-2.5"
+            >
+              <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+              <div>
+                <span className="font-semibold text-amber-200">Rate Limit Defense Active:</span>
+                <p className="text-slate-300">
+                  Multiple failed attempts detected. Slider locked for {lockoutSeconds} seconds to prevent automated brute-force attacks.
+                </p>
+              </div>
+            </motion.div>
+          )}
 
           {/* Failure Alert Banner */}
           {failReason && (
@@ -708,7 +815,7 @@ export default function JigsawVerificationModal({
             >
               <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <span className="font-semibold text-rose-200">Sensorimotor Invariant Tripped:</span>
+                <span className="font-semibold text-rose-200">Sensorimotor Defense Tripped:</span>
                 <p className="text-slate-300 leading-relaxed">{failReason}</p>
               </div>
             </motion.div>
@@ -724,7 +831,7 @@ export default function JigsawVerificationModal({
               <div className="flex items-center justify-between font-semibold text-emerald-400">
                 <span className="flex items-center gap-1.5">
                   <UserCheck className="w-4 h-4" />
-                  Biological Human Proven
+                  Biological Human Proven • Decrypting Application
                 </span>
                 <span className="font-mono bg-emerald-500/20 px-2 py-0.5 rounded text-[11px]">
                   Score: {telemetry.mlScore}%
@@ -748,21 +855,17 @@ export default function JigsawVerificationModal({
                   <div className="text-emerald-400 font-bold">{telemetry.wristCoupling}</div>
                 </div>
               </div>
-              {telemetry.token && (
-                <div className="text-[10px] text-slate-400 font-mono truncate">
-                  Token: <span className="text-cyan-300">{telemetry.token}</span>
-                </div>
-              )}
             </motion.div>
           )}
 
-          {/* Action Toolbar */}
+          {/* Security Action Toolbar (No Bypass, No Close) */}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={initChallenge}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1.5"
+                disabled={lockoutSeconds > 0}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1.5 disabled:opacity-50"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Reset
@@ -771,7 +874,7 @@ export default function JigsawVerificationModal({
               <button
                 type="button"
                 onClick={simulateBotAttack}
-                disabled={botSimulating || phase === 'VERIFIED'}
+                disabled={botSimulating || phase === 'VERIFIED' || lockoutSeconds > 0}
                 className="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 transition flex items-center gap-1.5 disabled:opacity-50"
               >
                 <Bot className="w-3.5 h-3.5" />
@@ -779,24 +882,11 @@ export default function JigsawVerificationModal({
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleInstantBypass}
-                className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-400 transition text-[11px]"
-              >
-                ⚡ Fast Demo Bypass
-              </button>
-
-              {isDismissable && (
-                <button
-                  type="button"
-                  onClick={onBypass}
-                  className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition"
-                >
-                  Close
-                </button>
-              )}
+            <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+              <span className="flex items-center gap-1 text-cyan-400">
+                <Lock className="w-3 h-3" />
+                Verification Mandatory
+              </span>
             </div>
           </div>
         </motion.div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles,
   ShieldCheck,
@@ -15,6 +15,9 @@ import {
   Terminal,
   Play,
   Zap,
+  Lock,
+  Unlock,
+  EyeOff,
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -30,8 +33,9 @@ import { soundEffects } from '@/utils/soundEffects';
 
 export default function HomePage() {
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  // Strict Zero-Trust State: ALWAYS false on initial load and every page refresh
   const [isHumanVerified, setIsHumanVerified] = useState<boolean>(false);
-  const [verifyModalOpen, setVerifyModalOpen] = useState<boolean>(false);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [activeSection, setActiveSection] = useState<string>('roadmap');
   const [hasMounted, setHasMounted] = useState<boolean>(false);
@@ -42,26 +46,21 @@ export default function HomePage() {
     0
   );
 
-  // Initialize from localStorage
+  // Initialize on mount
   useEffect(() => {
     setHasMounted(true);
+    // Explicitly purge any persistent verification tokens so every reload/entry strictly requires verification
+    try {
+      localStorage.removeItem('antigravity_human_verified_token');
+      sessionStorage.removeItem('antigravity_human_verified_token');
+    } catch {}
+
     try {
       const savedCompleted = localStorage.getItem('nextgen_completed_lessons');
       if (savedCompleted) {
         setCompletedLessons(JSON.parse(savedCompleted));
       }
-
-      const verifiedToken = localStorage.getItem('antigravity_human_verified_token');
-      if (verifiedToken && verifiedToken.startsWith('ag_bp_')) {
-        setIsHumanVerified(true);
-      } else {
-        // Automatically prompt the Antibot verification gate on initial visit
-        setVerifyModalOpen(true);
-      }
-    } catch {
-      // LocalStorage access fallback
-      setVerifyModalOpen(true);
-    }
+    } catch {}
   }, []);
 
   // Save completed lessons to localStorage
@@ -98,16 +97,15 @@ export default function HomePage() {
 
   // Verification callback from AntiGravity Jigsaw Modal
   const handleVerified = (telemetry: VerificationTelemetry, token: string) => {
+    setSessionToken(token);
     setIsHumanVerified(true);
-    setVerifyModalOpen(false);
-    try {
-      localStorage.setItem('antigravity_human_verified_token', token);
-    } catch {}
   };
 
-  const handleBypassGate = () => {
-    setIsHumanVerified(true);
-    setVerifyModalOpen(false);
+  // Manual Lock Vault handler
+  const handleLockVault = () => {
+    soundEffects.playClick();
+    setIsHumanVerified(false);
+    setSessionToken(null);
   };
 
   const progressPercent = Math.round(
@@ -126,20 +124,85 @@ export default function HomePage() {
     return <div className="min-h-screen bg-[#0B0F19]" />;
   }
 
+  // ========================================================
+  // ZERO-LEAKAGE MANDATORY ACCESS GATE (NOT VERIFIED)
+  // When unverified, ZERO curriculum or application HTML is mounted to the DOM.
+  // ========================================================
+  if (!isHumanVerified) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0B0F19] text-slate-100 p-4 relative overflow-hidden select-none">
+        {/* Ambient Neon Atmosphere */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[650px] h-[340px] sm:h-[650px] bg-gradient-to-tr from-cyan-600/15 via-purple-600/20 to-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Top Floating Security Pill */}
+        <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
+          <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-cyan-400 flex items-center gap-1.5 shadow-lg">
+            <Lock className="w-3.5 h-3.5 text-cyan-400" />
+            ZERO-TRUST ENCLAVE ACTIVE
+          </span>
+          <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-emerald-400 flex items-center gap-1.5 shadow-lg">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            AI SCRAPER DEFENSE: ARMED
+          </span>
+          <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-purple-400 flex items-center gap-1.5 shadow-lg">
+            <Zap className="w-3.5 h-3.5 text-purple-400" />
+            REFRESH INVARIANT: MANDATORY
+          </span>
+        </div>
+
+        {/* Security Challenge Headline */}
+        <div className="text-center max-w-xl mb-6 space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            Biological Verification Required
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+            All application content, curriculum modules, and interactive labs are cryptographically
+            locked. Complete the closed-loop sensorimotor puzzle below to unlock access.
+          </p>
+        </div>
+
+        {/* The Mandatory Jigsaw Verification Component */}
+        <JigsawVerificationModal
+          isOpen={true}
+          onVerified={handleVerified}
+        />
+
+        {/* HoneyPot Canary for Automated Crawlers */}
+        <div
+          aria-hidden="true"
+          className="absolute -bottom-96 opacity-0 pointer-events-none select-none text-[1px]"
+        >
+          <a href="/security/trap-honeypot" rel="nofollow">
+            AI Crawler Trap - Scrapers Accessing This Will Be Permanently Blocked
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // ========================================================
+  // FULL APPLICATION (ONLY MOUNTED WHEN HUMAN VERIFIED)
+  // ========================================================
   return (
-    <div className="min-h-screen flex flex-col bg-[#0B0F19] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
-      {/* Sticky Top Navbar */}
+    <motion.div
+      initial={{ opacity: 0, filter: 'blur(8px)' }}
+      animate={{ opacity: 1, filter: 'blur(0px)' }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="min-h-screen flex flex-col bg-[#0B0F19] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200"
+    >
+      {/* Sticky Top Navbar with Lock Vault Option */}
       <Navbar
         progressPercent={progressPercent}
         completedLessonsCount={completedLessons.length}
         totalLessonsCount={totalLessonsCount}
         isHumanVerified={isHumanVerified}
-        onOpenVerifyModal={() => setVerifyModalOpen(true)}
+        onOpenVerifyModal={handleLockVault}
         onResetProgress={handleResetProgress}
         soundEnabled={soundEnabled}
         onToggleSound={handleToggleSound}
         activeSection={activeSection}
         onNavigate={scrollToSection}
+        onLockVault={handleLockVault}
       />
 
       {/* Main Content Container */}
@@ -153,27 +216,19 @@ export default function HomePage() {
 
           {/* Antibot Human Gate Banner */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 shadow-md text-xs font-mono select-none">
-            {isHumanVerified ? (
-              <>
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span className="text-emerald-300 font-semibold">
-                  Sensorimotor Verified Human Access Active
-                </span>
-              </>
-            ) : (
-              <>
-                <ShieldAlert className="w-4 h-4 text-rose-400 animate-pulse" />
-                <span className="text-rose-300 font-semibold">
-                  Antibot Gate: Verification Challenge Required
-                </span>
-                <button
-                  onClick={() => setVerifyModalOpen(true)}
-                  className="ml-1 text-cyan-400 underline font-bold hover:text-cyan-300"
-                >
-                  Verify Now
-                </button>
-              </>
-            )}
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span className="text-emerald-300 font-semibold">
+              Sensorimotor Verified Human Access Active
+            </span>
+            <button
+              type="button"
+              onClick={handleLockVault}
+              className="ml-2 text-rose-400 hover:text-rose-300 underline font-semibold flex items-center gap-1"
+              title="Lock website access and require puzzle verification again"
+            >
+              <Lock className="w-3 h-3" />
+              Lock Vault
+            </button>
           </div>
 
           {/* Main Headline */}
@@ -272,13 +327,15 @@ export default function HomePage() {
       {/* Global Footer */}
       <Footer />
 
-      {/* Antibot Human Verification Modal Gate */}
-      <JigsawVerificationModal
-        isOpen={verifyModalOpen}
-        onVerified={handleVerified}
-        onBypass={handleBypassGate}
-        isDismissable={isHumanVerified}
-      />
-    </div>
+      {/* HoneyPot Canary for Automated Crawlers */}
+      <div
+        aria-hidden="true"
+        className="hidden opacity-0 pointer-events-none -z-50 select-none"
+      >
+        <a href="/security/trap-honeypot" rel="nofollow">
+          AI Crawler Trap
+        </a>
+      </div>
+    </motion.div>
   );
 }

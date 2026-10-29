@@ -16,6 +16,7 @@ import {
   Shield,
   Rocket,
   Code2,
+  Lock,
 } from 'lucide-react';
 import { soundEffects } from '@/utils/soundEffects';
 
@@ -30,6 +31,7 @@ interface NavbarProps {
   onToggleSound: () => void;
   activeSection: string;
   onNavigate: (sectionId: string) => void;
+  onLockVault?: () => void;
 }
 
 export default function Navbar({
@@ -43,6 +45,7 @@ export default function Navbar({
   onToggleSound,
   activeSection,
   onNavigate,
+  onLockVault,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -132,18 +135,19 @@ export default function Navbar({
 
           {/* Antibot Human Gate Status Badge */}
           <button
-            onClick={onOpenVerifyModal}
+            onClick={isHumanVerified && onLockVault ? onLockVault : onOpenVerifyModal}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-all ${
               isHumanVerified
-                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/40'
                 : 'bg-rose-500/15 text-rose-300 border-rose-500/30 hover:bg-rose-500/25 animate-pulse'
             }`}
-            title={isHumanVerified ? 'Biometrics Verified (Click to Test Gate)' : 'Antibot Gate Active'}
+            title={isHumanVerified ? 'Human Verified • Click to Re-Lock Vault' : 'Antibot Gate Active'}
           >
             {isHumanVerified ? (
               <>
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden md:inline">Human Verified</span>
+                <span className="hidden md:inline">Verified Human</span>
+                <Lock className="w-3 h-3 text-slate-400 ml-0.5 hover:text-rose-400" />
               </>
             ) : (
               <>
@@ -182,59 +186,46 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation */}
+      {/* Mobile Drawer Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden border-t border-slate-800 bg-slate-950/95 px-4 py-3 space-y-2 overflow-hidden"
+            className="lg:hidden border-t border-slate-800 bg-slate-950/95 px-4 py-4 space-y-2"
           >
-            <div className="flex items-center justify-between py-2 border-b border-slate-800/60 text-xs font-mono">
-              <span className="text-slate-400">Total Progress:</span>
-              <span className="text-cyan-400 font-bold">
-                {progressPercent}% ({completedLessonsCount}/{totalLessonsCount} Completed)
-              </span>
-            </div>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
+                    isActive
+                      ? 'bg-slate-800 text-cyan-400 border border-cyan-500/30'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
 
-            <div className="grid grid-cols-1 gap-1.5 pt-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeSection === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavClick(item.id)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-left transition ${
-                      isActive
-                        ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                        : 'text-slate-300 hover:bg-slate-900'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 text-cyan-400" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs">
+            {isHumanVerified && onLockVault && (
               <button
-                onClick={onResetProgress}
-                className="flex items-center gap-1.5 text-rose-400 hover:text-rose-300 p-1.5"
+                onClick={() => {
+                  onLockVault();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-rose-400 bg-rose-950/30 border border-rose-800/40 hover:bg-rose-900/40"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reset Progress
+                <Lock className="w-4 h-4" />
+                <span>Re-Lock Access Gate</span>
               </button>
-              <button
-                onClick={onOpenVerifyModal}
-                className="flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 p-1.5"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                Antibot Gate
-              </button>
-            </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

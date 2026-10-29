@@ -177,7 +177,7 @@ export default function KnnInteractive() {
 
             {/* Connector Lines to K Nearest Neighbors */}
             {kNearest.map((neighbor) => (
-              <motion.line
+              <line
                 key={`line-${neighbor.id}`}
                 x1={queryPt.x}
                 y1={queryPt.y}
@@ -186,9 +186,7 @@ export default function KnnInteractive() {
                 stroke={neighbor.classType === 'blue' ? '#38BDF8' : '#F43F5E'}
                 strokeWidth="1.8"
                 strokeDasharray="3 2"
-                initial={false}
-                animate={{ x1: queryPt.x, y1: queryPt.y }}
-                transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+                className="transition-all duration-200"
               />
             ))}
 

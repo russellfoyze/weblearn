@@ -197,7 +197,7 @@ export default function SvmInteractive() {
                 />
 
                 {/* Left Margin (Dashed) */}
-                <motion.line
+                <line
                   x1={hpCenterX - 180 - marginWidth}
                   y1={hpCenterY - 180 * hpSlope}
                   x2={hpCenterX + 180 - marginWidth}
@@ -205,15 +205,11 @@ export default function SvmInteractive() {
                   stroke="#D946EF"
                   strokeWidth="1.5"
                   strokeDasharray="4 4"
-                  animate={{
-                    x1: hpCenterX - 180 - marginWidth,
-                    x2: hpCenterX + 180 - marginWidth,
-                  }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+                  className="transition-all duration-300"
                 />
 
                 {/* Right Margin (Dashed) */}
-                <motion.line
+                <line
                   x1={hpCenterX - 180 + marginWidth}
                   y1={hpCenterY - 180 * hpSlope}
                   x2={hpCenterX + 180 + marginWidth}
@@ -221,11 +217,7 @@ export default function SvmInteractive() {
                   stroke="#D946EF"
                   strokeWidth="1.5"
                   strokeDasharray="4 4"
-                  animate={{
-                    x1: hpCenterX - 180 + marginWidth,
-                    x2: hpCenterX + 180 + marginWidth,
-                  }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+                  className="transition-all duration-300"
                 />
 
                 {/* Main Optimal Hyperplane (Solid Street Divider) */}

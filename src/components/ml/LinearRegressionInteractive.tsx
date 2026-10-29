@@ -199,7 +199,7 @@ export default function LinearRegressionInteractive() {
             </text>
 
             {/* Regression Line */}
-            <motion.line
+            <line
               x1={pt1.x}
               y1={pt1.y}
               x2={pt2.x}
@@ -207,9 +207,7 @@ export default function LinearRegressionInteractive() {
               stroke="#F43F5E"
               strokeWidth="3.5"
               strokeLinecap="round"
-              initial={false}
-              animate={{ x1: pt1.x, y1: pt1.y, x2: pt2.x, y2: pt2.y }}
-              transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+              className="transition-all duration-300 ease-out"
             />
 
             {/* Residuals (error distance lines) */}
@@ -220,7 +218,7 @@ export default function LinearRegressionInteractive() {
                 const py = scaleY(pt.y);
                 const predPy = scaleY(predY);
                 return (
-                  <motion.line
+                  <line
                     key={`res-${i}`}
                     x1={px}
                     y1={py}
@@ -229,9 +227,7 @@ export default function LinearRegressionInteractive() {
                     stroke="#F43F5E"
                     strokeWidth="1.5"
                     strokeDasharray="3 3"
-                    initial={false}
-                    animate={{ y2: predPy }}
-                    transition={{ type: 'spring', stiffness: 180, damping: 22 }}
+                    className="transition-all duration-200"
                   />
                 );
               })}

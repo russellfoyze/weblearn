@@ -199,20 +199,15 @@ export default function LinearSniperGame() {
           })}
 
           {/* The Laser Beam Line */}
-          <motion.line
+          <line
             x1={40}
             y1={yStart}
             x2={460}
             y2={yEnd}
             stroke={isFiring ? '#FFFFFF' : '#F43F5E'}
-            strokeWidth={isFiring ? '6' : '3'}
+            strokeWidth={isFiring ? 6 : 3}
             strokeLinecap="round"
-            className={isFiring ? 'drop-shadow-[0_0_12px_#F43F5E]' : ''}
-            animate={{
-              y1: yStart,
-              y2: yEnd,
-            }}
-            transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+            className={`transition-all duration-300 ${isFiring ? 'drop-shadow-[0_0_14px_#F43F5E]' : ''}`}
           />
 
           {/* Target Orbs */}

@@ -17,9 +17,6 @@ export const metadata: Metadata = {
     'Web Development Roadmap',
   ],
   authors: [{ name: 'NextGen Mastery Team' }],
-  icons: {
-    icon: '/favicon.ico',
-  },
   robots: {
     index: false,
     follow: false,

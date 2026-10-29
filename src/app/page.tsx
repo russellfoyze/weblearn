@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles,
@@ -18,6 +19,7 @@ import {
   Lock,
   Unlock,
   EyeOff,
+  Cpu,
 } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -30,8 +32,11 @@ import JigsawVerificationModal from '@/components/antibot/JigsawVerificationModa
 import { ROADMAP_PHASES } from '@/data/roadmapData';
 import { VerificationTelemetry } from '@/types';
 import { soundEffects } from '@/utils/soundEffects';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function HomePage() {
+  const { language, toggleLanguage } = useLanguage();
+  const isBn = language === 'bn';
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
   // Strict Zero-Trust State: ALWAYS false on initial load and every page refresh
   const [isHumanVerified, setIsHumanVerified] = useState<boolean>(false);
@@ -134,30 +139,56 @@ export default function HomePage() {
         {/* Ambient Neon Atmosphere */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[650px] h-[340px] sm:h-[650px] bg-gradient-to-tr from-cyan-600/15 via-purple-600/20 to-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
 
+        {/* Top Header Row with Language Toggle and Direct Link to ML */}
+        <div className="absolute top-4 right-4 flex items-center gap-2 z-50">
+          <Link
+            href="/machine-learning"
+            className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-amber-300 hover:text-white flex items-center gap-1.5 transition"
+          >
+            <Cpu className="w-3.5 h-3.5 text-amber-400" />
+            <span>{isBn ? 'মেশিন লার্নিং (ML) পেজ' : 'Machine Learning (ML)'}</span>
+          </Link>
+
+          <button
+            onClick={() => {
+              soundEffects.playClick();
+              toggleLanguage();
+            }}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono font-bold transition"
+          >
+            <span className={!isBn ? 'text-cyan-400 font-bold' : 'text-slate-500'}>EN</span>
+            <span className="text-slate-600">|</span>
+            <span className={isBn ? 'text-rose-400 font-bold' : 'text-slate-500'}>বাংলা</span>
+          </button>
+        </div>
+
         {/* Top Floating Security Pill */}
         <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
           <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-cyan-400 flex items-center gap-1.5 shadow-lg">
             <Lock className="w-3.5 h-3.5 text-cyan-400" />
-            ZERO-TRUST ENCLAVE ACTIVE
+            {isBn ? 'জিরো-ট্রাস্ট এনক্লেভ সক্রিয়' : 'ZERO-TRUST ENCLAVE ACTIVE'}
           </span>
           <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-emerald-400 flex items-center gap-1.5 shadow-lg">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            AI SCRAPER DEFENSE: ARMED
+            {isBn ? 'এআই স্ক্র্যাপার ডিফেন্স: প্রস্তুত' : 'AI SCRAPER DEFENSE: ARMED'}
           </span>
           <span className="px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-purple-400 flex items-center gap-1.5 shadow-lg">
             <Zap className="w-3.5 h-3.5 text-purple-400" />
-            REFRESH INVARIANT: MANDATORY
+            {isBn ? 'রিফ্রেশ ইনভেরিয়েন্ট: বাধ্যতামূলক' : 'REFRESH INVARIANT: MANDATORY'}
           </span>
         </div>
 
         {/* Security Challenge Headline */}
         <div className="text-center max-w-xl mb-6 space-y-2">
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            Biological Verification Required
+            {isBn
+              ? 'বায়োলজিক্যাল হিউম্যান ভেরিফিকেশন আবশ্যক'
+              : 'Biological Verification Required'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-            All application content, curriculum modules, and interactive labs are cryptographically
-            locked. Complete the closed-loop sensorimotor puzzle below to unlock access.
+            {isBn
+              ? 'অ্যাপ্লিকেশনের সকল কনটেন্ট, কারিকুলাম ও ল্যাব ক্রিপ্টোগ্রাফিকভাবে সুরক্ষিত। অ্যাক্সেস পেতে নিচের জিগস পাজলটি সমাধান করুন।'
+              : 'All application content, curriculum modules, and interactive labs are cryptographically locked. Complete the closed-loop sensorimotor puzzle below to unlock access.'}
           </p>
         </div>
 
@@ -218,7 +249,9 @@ export default function HomePage() {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 shadow-md text-xs font-mono select-none">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span className="text-emerald-300 font-semibold">
-              Sensorimotor Verified Human Access Active
+              {isBn
+                ? 'সেন্সোরিমোটর ভেরিফাইড হিউম্যান অ্যাক্সেস সক্রিয়'
+                : 'Sensorimotor Verified Human Access Active'}
             </span>
             <button
               type="button"
@@ -227,33 +260,62 @@ export default function HomePage() {
               title="Lock website access and require puzzle verification again"
             >
               <Lock className="w-3 h-3" />
-              Lock Vault
+              {isBn ? 'লক ভল্ট' : 'Lock Vault'}
             </button>
+          </div>
+
+          {/* New Machine Learning Feature Announcement Banner */}
+          <div className="flex justify-center">
+            <Link
+              href="/machine-learning"
+              onClick={() => soundEffects.playClick()}
+              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-rose-500/20 via-amber-500/20 to-cyan-500/20 border border-amber-500/40 text-xs sm:text-sm font-bold text-white hover:border-amber-400 hover:scale-[1.02] transition-all shadow-xl group"
+            >
+              <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-black text-[10px]">
+                {isBn ? 'নতুন পেজ' : 'NEW PAGE'}
+              </span>
+              <span className="text-amber-300">
+                {isBn
+                  ? '🤖 মেশিন লার্নিং: ৭টি অ্যালগরিদম অ্যানিমেটেড গাইড দেখুন'
+                  : '🤖 Machine Learning: 7 Core Algorithms Animated Guide'}
+              </span>
+              <ArrowRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
 
           {/* Main Headline */}
           <div className="space-y-4 max-w-4xl mx-auto">
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
-              NextGen Full-Stack Mastery: <br className="hidden sm:inline" />
+              {isBn ? 'নেক্সটজেন ফুল-স্ট্যাক ও এমএল:' : 'NextGen Full-Stack Mastery:'}{' '}
+              <br className="hidden sm:inline" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-emerald-400">
-                Zero to Expert
+                {isBn ? 'জিরো থেকে এক্সপার্ট' : 'Zero to Expert'}
               </span>
             </h1>
 
             <p className="text-slate-300 text-sm sm:text-lg max-w-2xl mx-auto leading-relaxed">
-              The production-ready, mobile-first interactive curriculum. Progress from HTML5 DOM
-              mechanics and Tailwind Grid utilities to React Fiber diffing, Next.js Server Components,
-              and a bulletproof 16-point security audit.
+              {isBn
+                ? 'প্রোডাকশন-রেডি, মোবাইল-ফার্স্ট ইন্টারেক্টিভ কারিকুলাম। HTML5 DOM ও Tailwind Grid থেকে শুরু করে React Fiber ডিফিঙ, Next.js সার্ভার কম্পোনেন্টস এবং মেশিন লার্নিংয়ের ৭টি অ্যালগরিদম শিখুন।'
+                : 'The production-ready, mobile-first interactive curriculum. Progress from HTML5 DOM mechanics and Tailwind Grid utilities to React Fiber diffing, Next.js Server Components, and interactive Machine Learning.'}
             </p>
           </div>
 
           {/* Quick CTA Action Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Link
+              href="/machine-learning"
+              onClick={() => soundEffects.playClick()}
+              className="px-5 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-rose-400 hover:from-amber-300 hover:to-rose-300 text-slate-950 font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-lg shadow-amber-950/50"
+            >
+              <Cpu className="w-4 h-4" />
+              <span>{isBn ? '🤖 মেশিন লার্নিং ল্যাব' : '🤖 Machine Learning Lab'}</span>
+            </Link>
+
             <button
               onClick={() => scrollToSection('roadmap')}
               className="px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-lg shadow-cyan-950/50"
             >
-              <span>Explore 5-Phase Roadmap</span>
+              <span>{isBn ? '৫-ধাপের ওয়েব রোডম্যাপ' : 'Explore 5-Phase Roadmap'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -262,7 +324,7 @@ export default function HomePage() {
               className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm transition flex items-center gap-2"
             >
               <LayoutGrid className="w-4 h-4 text-cyan-400" />
-              <span>Tailwind Grid Lab (10 Presets)</span>
+              <span>{isBn ? 'টেইলউইন্ড গ্রিড ল্যাব (১০ প্রিসেট)' : 'Tailwind Grid Lab (10 Presets)'}</span>
             </button>
 
             <button
@@ -270,27 +332,43 @@ export default function HomePage() {
               className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm transition flex items-center gap-2"
             >
               <Shield className="w-4 h-4 text-emerald-400" />
-              <span>16-Point Security Lab</span>
+              <span>{isBn ? '১৬-পয়েন্ট সিকিউরিটি ল্যাব' : '16-Point Security Lab'}</span>
             </button>
           </div>
 
           {/* Four Pillar Tech Specs Badges */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 max-w-4xl mx-auto text-left">
             <div className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
-              <div className="text-[11px] font-mono text-cyan-400 font-bold">01 • Next.js App Router</div>
-              <div className="text-xs text-slate-300 font-medium">React 18 Server Components</div>
+              <div className="text-[11px] font-mono text-cyan-400 font-bold">
+                {isBn ? '০১ • Next.js অ্যাপ রাউটার' : '01 • Next.js App Router'}
+              </div>
+              <div className="text-xs text-slate-300 font-medium">
+                {isBn ? 'React 18 সার্ভার কম্পোনেন্টস' : 'React 18 Server Components'}
+              </div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
-              <div className="text-[11px] font-mono text-purple-400 font-bold">02 • Tailwind CSS &amp; Framer</div>
-              <div className="text-xs text-slate-300 font-medium">Mobile-First Motion Physics</div>
+              <div className="text-[11px] font-mono text-purple-400 font-bold">
+                {isBn ? '০২ • Tailwind CSS ও Framer' : '02 • Tailwind CSS & Framer'}
+              </div>
+              <div className="text-xs text-slate-300 font-medium">
+                {isBn ? 'মোবাইল-ফার্স্ট মোশন ফিজিক্স' : 'Mobile-First Motion Physics'}
+              </div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
-              <div className="text-[11px] font-mono text-emerald-400 font-bold">03 • Zero-Bug Guarantee</div>
-              <div className="text-xs text-slate-300 font-medium">Deterministic Client State</div>
+              <div className="text-[11px] font-mono text-emerald-400 font-bold">
+                {isBn ? '০৩ • জিরো-বাগ গ্যারান্টি' : '03 • Zero-Bug Guarantee'}
+              </div>
+              <div className="text-xs text-slate-300 font-medium">
+                {isBn ? 'ডিটারমিনিস্টিক ক্লায়েন্ট স্টেট' : 'Deterministic Client State'}
+              </div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
-              <div className="text-[11px] font-mono text-rose-400 font-bold">04 • Antibot Protection</div>
-              <div className="text-xs text-slate-300 font-medium">Non-Linear C/D Gain Gate</div>
+              <div className="text-[11px] font-mono text-rose-400 font-bold">
+                {isBn ? '০৪ • অ্যান্টিবট প্রোটেকশন' : '04 • Antibot Protection'}
+              </div>
+              <div className="text-xs text-slate-300 font-medium">
+                {isBn ? 'নন-লিনিয়ার সেন্সর গেট' : 'Non-Linear C/D Gain Gate'}
+              </div>
             </div>
           </div>
         </section>

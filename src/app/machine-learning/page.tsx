@@ -1,0 +1,262 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Sparkles,
+  Search,
+  Filter,
+  CheckCircle2,
+  Table as TableIcon,
+  Cpu,
+  ArrowRight,
+  BookOpen,
+  HelpCircle,
+  TrendingUp,
+} from 'lucide-react';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
+import MlOverviewHero from '@/components/ml/MlOverviewHero';
+import MlAlgorithmCard from '@/components/ml/MlAlgorithmCard';
+import { ML_ALGORITHMS, MLAlgorithmData } from '@/data/mlAlgorithmsData';
+import { useLanguage } from '@/context/LanguageContext';
+import { soundEffects } from '@/utils/soundEffects';
+
+export default function MachineLearningPage() {
+  const { language } = useLanguage();
+  const isBn = language === 'bn';
+
+  // Filter & Search state
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+
+  // Toggle Sound FX
+  const handleToggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    soundEffects.enabled = next;
+    if (next) soundEffects.playClick();
+  };
+
+  // Filter algorithms
+  const filteredAlgorithms = useMemo(() => {
+    return ML_ALGORITHMS.filter((alg) => {
+      // Category filter
+      if (selectedCategory === 'supervised' && alg.typeBadge !== 'Supervised') return false;
+      if (selectedCategory === 'unsupervised' && alg.typeBadge !== 'Unsupervised') return false;
+      if (selectedCategory === 'ensemble' && alg.typeBadge !== 'Ensemble') return false;
+      if (selectedCategory === 'regression' && alg.taskType !== 'Regression' && alg.taskType !== 'Both')
+        return false;
+      if (selectedCategory === 'classification' && alg.taskType !== 'Classification' && alg.taskType !== 'Both')
+        return false;
+      if (selectedCategory === 'clustering' && alg.taskType !== 'Clustering') return false;
+
+      // Search query
+      if (searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase();
+        const matchesName = alg.name.toLowerCase().includes(query) || alg.nameBn.includes(query);
+        const matchesSubtitle =
+          alg.subtitle.toLowerCase().includes(query) || alg.subtitleBn.includes(query);
+        const matchesSummary =
+          alg.summary.toLowerCase().includes(query) || alg.summaryBn.includes(query);
+        return matchesName || matchesSubtitle || matchesSummary;
+      }
+
+      return true;
+    });
+  }, [selectedCategory, searchQuery]);
+
+  const categories = [
+    { id: 'all', label: isBn ? 'সকল অ্যালগরিদম (৭টি)' : 'All 7 Algorithms' },
+    { id: 'supervised', label: isBn ? 'তত্ত্বাবধানাধীন (Supervised)' : 'Supervised' },
+    { id: 'unsupervised', label: isBn ? 'তত্ত্বাবধানহীন (Unsupervised)' : 'Unsupervised' },
+    { id: 'ensemble', label: isBn ? 'এনসেম্বল (Ensemble)' : 'Ensemble' },
+    { id: 'regression', label: isBn ? 'রিগ্রেশন (Regression)' : 'Regression' },
+    { id: 'classification', label: isBn ? 'ক্লাসিফিকেশন (Classification)' : 'Classification' },
+    { id: 'clustering', label: isBn ? 'ক্লাস্টারিং (Clustering)' : 'Clustering' },
+  ];
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#0B0F19] text-slate-100 selection:bg-rose-500/30 selection:text-rose-200">
+      {/* Top Navbar */}
+      <Navbar
+        currentTrack="ml"
+        soundEnabled={soundEnabled}
+        onToggleSound={handleToggleSound}
+      />
+
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-16">
+        {/* ======================================================== */}
+        {/* MODULE 1: THE 7-ALGORITHM OVERVIEW HERO (PAGE 1 INFOGRAPHIC) */}
+        {/* ======================================================== */}
+        <MlOverviewHero />
+
+        {/* ======================================================== */}
+        {/* FILTER & SEARCH CONTROLS */}
+        {/* ======================================================== */}
+        <section className="p-4 sm:p-6 rounded-2xl bg-slate-900/60 border border-slate-800 backdrop-blur-md space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder={
+                  isBn
+                    ? 'অ্যালগরিদমের নাম দিয়ে খুঁজুন (যেমন: লিনিয়ার, ট্রি, SVM, KNN, ক্লাস্টার)...'
+                    : 'Search algorithms by name or concept (e.g. regression, tree, svm, knn)...'
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
+              />
+            </div>
+
+            {/* Total Filter Count */}
+            <div className="text-xs font-mono text-slate-400">
+              {isBn ? 'প্রদর্শিত হচ্ছে:' : 'Showing:'}{' '}
+              <strong className="text-cyan-400">{filteredAlgorithms.length}</strong> / 7
+            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => {
+                  soundEffects.playClick();
+                  setSelectedCategory(cat.id);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                  selectedCategory === cat.id
+                    ? 'bg-rose-500 text-white font-bold shadow-md shadow-rose-950/40'
+                    : 'bg-slate-950/80 text-slate-400 hover:text-white hover:bg-slate-850 border border-slate-800'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* MODULE 2: DEEP-DIVE CARDS FOR ALL 7 ALGORITHMS */}
+        {/* ======================================================== */}
+        <section className="space-y-16">
+          {filteredAlgorithms.map((algorithm) => (
+            <MlAlgorithmCard key={algorithm.id} algorithm={algorithm} />
+          ))}
+
+          {filteredAlgorithms.length === 0 && (
+            <div className="text-center py-16 p-8 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-3">
+              <Cpu className="w-10 h-10 text-slate-600 mx-auto" />
+              <h4 className="text-lg font-bold text-white">
+                {isBn ? 'কোনো অ্যালগরিদম পাওয়া যায়নি' : 'No matching algorithms found'}
+              </h4>
+              <p className="text-xs text-slate-400">
+                {isBn
+                  ? 'অনুগ্রহ করে সার্চ কোয়েরি বা ফিল্টার পরিবর্তন করে পুনরায় চেষ্টা করুন।'
+                  : 'Try clearing your search query or choosing another filter category.'}
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* ======================================================== */}
+        {/* MODULE 3: MASTER COMPARISON MATRIX & CHEAT SHEET */}
+        {/* ======================================================== */}
+        <section className="p-6 sm:p-8 rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center">
+              <TableIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold text-white">
+                {isBn ? '৭টি অ্যালগরিদমের তুলনা ও চিট-শীট' : 'Algorithm Decision Matrix & Cheat Sheet'}
+              </h3>
+              <p className="text-xs text-slate-400 font-mono">
+                {isBn
+                  ? 'কখন কোন অ্যালগরিদম বেছে নেবেন তার দ্রুত সিদ্ধান্ত গাইড'
+                  : 'Quick reference matrix to choose the right model for any real-world problem'}
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-slate-800">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-slate-950 border-b border-slate-800 text-slate-300">
+                <tr>
+                  <th className="p-3">#</th>
+                  <th className="p-3">{isBn ? 'অ্যালগরিদম' : 'Algorithm'}</th>
+                  <th className="p-3">{isBn ? 'ধরন (Type)' : 'Type'}</th>
+                  <th className="p-3">{isBn ? 'মূল কাজ' : 'Primary Task'}</th>
+                  <th className="p-3">{isBn ? 'ব্যাখ্যাযোগ্যতা' : 'Interpretability'}</th>
+                  <th className="p-3">{isBn ? 'বাস্তব ব্যবহার' : 'Ideal Real-World Use'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/80 bg-slate-900/40">
+                {ML_ALGORITHMS.map((alg) => (
+                  <tr key={alg.id} className="hover:bg-slate-800/30 transition">
+                    <td className="p-3 font-bold text-slate-400">{alg.number}</td>
+                    <td className="p-3">
+                      <div className="font-bold text-white flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: alg.pillColor }}
+                        />
+                        <span>{isBn ? alg.nameBn : alg.name}</span>
+                      </div>
+                    </td>
+                    <td className="p-3 text-slate-300">
+                      {isBn ? alg.typeBadgeBn : alg.typeBadge}
+                    </td>
+                    <td className="p-3 text-slate-300">
+                      {isBn ? alg.taskTypeBn : alg.taskType}
+                    </td>
+                    <td className="p-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          alg.id === 'decision-tree' || alg.id === 'linear-regression'
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : alg.id === 'logistic-regression' || alg.id === 'k-nearest-neighbors'
+                            ? 'bg-sky-500/20 text-sky-300'
+                            : 'bg-amber-500/20 text-amber-300'
+                        }`}
+                      >
+                        {alg.id === 'decision-tree' || alg.id === 'linear-regression'
+                          ? isBn
+                            ? 'উচ্চ (White-Box)'
+                            : 'High (White-Box)'
+                          : alg.id === 'logistic-regression' || alg.id === 'k-nearest-neighbors'
+                          ? isBn
+                            ? 'মাঝারি (Moderate)'
+                            : 'Moderate'
+                          : isBn
+                          ? 'জটিল (Black-Box)'
+                          : 'Complex'}
+                      </span>
+                    </td>
+                    <td className="p-3 text-slate-400">
+                      {alg.id === 'linear-regression' && (isBn ? 'বাড়ি বা পণ্যের দাম অনুমান' : 'House prices, sales trends')}
+                      {alg.id === 'logistic-regression' && (isBn ? 'ইমেইল স্প্যাম ফিল্টারিং' : 'Spam filter, disease risk')}
+                      {alg.id === 'decision-tree' && (isBn ? 'ব্যাংক লোন অনুমোদন যাচাই' : 'Loan approvals, rule pipelines')}
+                      {alg.id === 'random-forest' && (isBn ? 'জটিল ব্যবসায়িক প্রেডিকশন' : 'High-stakes tabular prediction')}
+                      {alg.id === 'support-vector-machine' && (isBn ? 'টেক্সট ও ইমেজ ক্লাসিফিকেশন' : 'Text NLP, image boundary')}
+                      {alg.id === 'k-nearest-neighbors' && (isBn ? 'সিনেমা ও পণ্য সুপারিশ' : 'Movie recommender, spatial query')}
+                      {alg.id === 'k-means-clustering' && (isBn ? 'কাস্টমার মার্কেট সেগমেন্টেশন' : 'Customer market clustering')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      {/* Global Footer */}
+      <Footer />
+    </div>
+  );
+}

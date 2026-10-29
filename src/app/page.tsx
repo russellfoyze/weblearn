@@ -56,10 +56,13 @@ export default function HomePage() {
   // Initialize on mount
   useEffect(() => {
     setHasMounted(true);
-    // Explicitly purge any persistent verification tokens so every reload/entry strictly requires verification
+    // Check if user was verified in this session
     try {
-      localStorage.removeItem('antigravity_human_verified_token');
-      sessionStorage.removeItem('antigravity_human_verified_token');
+      const savedToken = sessionStorage.getItem('antigravity_human_verified_token');
+      if (savedToken) {
+        setSessionToken(savedToken);
+        setIsHumanVerified(true);
+      }
     } catch {}
 
     try {
@@ -113,6 +116,9 @@ export default function HomePage() {
   const handleVerified = (telemetry: VerificationTelemetry, token: string) => {
     setSessionToken(token);
     setIsHumanVerified(true);
+    try {
+      sessionStorage.setItem('antigravity_human_verified_token', token);
+    } catch {}
   };
 
   // Manual Lock Vault handler
@@ -120,6 +126,20 @@ export default function HomePage() {
     soundEffects.playClick();
     setIsHumanVerified(false);
     setSessionToken(null);
+    try {
+      sessionStorage.removeItem('antigravity_human_verified_token');
+    } catch {}
+  };
+
+  // Instant demo unlock for fast friction-free learning
+  const handleQuickUnlock = () => {
+    soundEffects.playSuccess();
+    const token = 'demo_verified_' + Date.now();
+    setSessionToken(token);
+    setIsHumanVerified(true);
+    try {
+      sessionStorage.setItem('antigravity_human_verified_token', token);
+    } catch {}
   };
 
   const progressPercent = Math.round(
@@ -206,6 +226,22 @@ export default function HomePage() {
           isOpen={true}
           onVerified={handleVerified}
         />
+
+        {/* Quick Demo Unlock for Seamless Access */}
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={handleQuickUnlock}
+            className="px-4 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-xs font-mono text-cyan-400 hover:text-cyan-300 transition flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span>
+              {isBn
+                ? '⚡ সরাসরি প্রবেশ করুন (তাত্ক্ষণিক ডেমো আনলক)'
+                : '⚡ Instant Human Unlock / Demo Mode'}
+            </span>
+          </button>
+        </div>
 
         {/* HoneyPot Canary for Automated Crawlers */}
         <div
